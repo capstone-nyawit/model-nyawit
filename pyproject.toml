@@ -3,16 +3,16 @@ name = "model-nyawit"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
+
 dependencies = [
-    "gdown>=6.0.0",
-    "ipykernel>=7.2.0",
-    "keras>=3.14.1",
-    "keras-cv>=0.9.0",
-    "matplotlib>=3.10.9",
-    "numpy>=2.4.4",
-    "pandas>=3.0.2",
-    "scikit-learn>=1.7.0",
-    "seaborn>=0.13.2",
-    "tensorflow>=2.21.0",
+    "numpy<2",
+    "tensorflow==2.15.0",
+    "keras==2.15.0",
+    "keras-cv==0.8.2",
+    "opencv-python",
+    "matplotlib",
+    "pandas",
+    "scikit-learn",
+    "seaborn",
 ]
