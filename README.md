@@ -1,6 +1,6 @@
 # model-nyawit
 
-Deteksi pohon kelapa sawit dari citra UAV/drone menggunakan deep learning object detection. Project ini mencakup dua pendekatan model: **RetinaNet** (one-stage) dan **Faster R-CNN** (two-stage), keduanya dengan backbone ResNet50 ImageNet.
+Deteksi pohon kelapa sawit dari citra UAV/drone menggunakan deep learning object detection dengan **RetinaNet** (one-stage detector) + **ResNet50** backbone.
 
 ## Struktur Folder
 
@@ -21,10 +21,11 @@ model-nyawit/
 │   ├── val2017/                       # 500 gambar validasi (1024x1024)
 │
 ├── notebooks/                      # Jupyter notebooks (source of truth)
-│   ├── model_deteksi_sawit_retina-net.ipynb   # RetinaNet pipeline (TF + KerasCV)
-│   ├── model_deteksi_sawit_faster-r-cnn.ipynb # Faster R-CNN pipeline (TF + KerasCV)
+│   └── model_deteksi_sawit_retina-net.ipynb   # RetinaNet pipeline (single-stage, faster)
 │
-├── models/                         # (kosong, reserved untuk model defs)
+├── models/                         # Model artifacts (auto-generated)
+│   ├── retinanet_best.weights.h5     # Best weights
+│   └── retinanet_saved_model/       # Exported SavedModel
 │
 └── working/                        # Output & cache (tidak di-commit)
     ├── dataset/
@@ -159,25 +160,30 @@ python -c "import tensorflow as tf; import keras_cv; import cv2; print(f'TF={tf.
 
 ### Training via Notebook
 
-Dua notebook tersedia di `notebooks/`:
+Notebook `model_deteksi_sawit_retina-net.ipynb` terorganisir dalam 22+ cell terpisah untuk keterbacaan maksimal:
 
-1. **RetinaNet** (`notebooks/model_deteksi_sawit_retina-net.ipynb`):
-   - One-stage detector, lebih cepat
-   - Backbone: ResNet50 ImageNet
-   - IMG_SIZE=800, BATCH_SIZE=2
-   - LR: Warmup + CosineDecay
-   - Augmentasi: RandomFlip, JitteredResize, RandomBrightness, RandomContrast
-
-2. **Faster R-CNN** (`notebooks/model_deteksi_sawit_faster-r-cnn.ipynb`):
-   - Two-stage detector, lebih akurat
-   - Backbone: ResNet50 ImageNet
-   - IMG_SIZE=640, BATCH_SIZE=2
-   - LR: PiecewiseConstantDecay
-   - Augmentasi: RandomFlip, JitteredResize
+| No | Cell | Fungsi |
+|----|------|--------|
+| 1 | Setup & Import | Import library, konstanta global |
+| 2 | Path & GPU | Setup path, GPU memory growth, mixed precision |
+| 3 | COCO Parser | `coco_to_records()` - parse COCO annotations |
+| 4 | Stratified Split | `dominant_class()`, `stratified_split()` - split data |
+| 5 | Load Dataset | `load_or_build_dataset()` - cache/load records |
+| 6 | Visualisasi | `draw_boxes_cv2()` - preview dataset |
+| 7-10 | Data Pipeline | Generator, decoder, augmenter, dataset builder |
+| 11 | Build Model | Bangun RetinaNet + NMS decoder |
+| 12-14 | Compile | LR schedule (WarmupCosine), optimizer, callbacks |
+| 15 | Training | Fit model, auto-resume dari checkpoint |
+| 16 | Loss Curve | Plot training/validation loss |
+| 17 | COCO mAP | Evaluasi dengan BoxCOCOMetrics |
+| 18 | Confusion Matrix | Box-matched CM via IoU > 0.5 |
+| 19 | Per-Class | Precision/Recall/F1 per kelas |
+| 20 | Inference | `detect_and_count()` - inference function |
+| 21 | Demo | Jalankan inference sample test |
+| 22 | Export | SavedModel, TFLite, salin ke /models/ |
 
 ```bash
-# Jalankan Jupyter
-jupyter notebook notebooks/
+jupyter notebook notebooks/model_deteksi_sawit_retina-net.ipynb
 ```
 
 ### Pipeline (per notebook)
@@ -219,5 +225,6 @@ counts = detect_and_count("path/to/image.jpg", model, conf=0.5)
 
 - Dataset (`datasets/`) dan output (`working/`) **tidak di-commit** via `.gitignore`.
 - `records.json` di `working/dataset/` adalah cache hasil parse COCO JSON. Hapus file ini untuk rebuild dari awal.
-- Training membutuhkan GPU dengan minimal ~8 GB VRAM. Tanpa GPU, training akan sangat lambat.
-- Untuk environment Kaggle, path otomatis disesuaikan ke `/kaggle/input/` dan `/kaggle/working/`.
+- Training membutuhkan GPU dengan minimal ~8 GB VRAM. Mixed precision mengurangi penggunaan memori sebesar 50%.
+- Notebook terorganisir rapi dalam 22+ cell terpisah untuk keterbacaan maksimal.
+- Setiap fungsi memiliki docstring lengkap untuk dokumentasi inline (lihat docstring di masing-masing cell).
