@@ -15,4 +15,7 @@ dependencies = [
     "pandas",
     "scikit-learn",
     "seaborn",
+    "fastapi",
+    "uvicorn",
+    "python-multipart",
 ]
