@@ -1,230 +1,166 @@
-# model-nyawit
+# 🌴 Palm Detection ML Service - RetinaNet
 
-Deteksi pohon kelapa sawit dari citra UAV/drone menggunakan deep learning object detection dengan **RetinaNet** (one-stage detector) + **ResNet50** backbone.
+Deteksi pohon kelapa sawit dari citra UAV/drone menggunakan model **RetinaNet** dengan backbone **ResNet50 ImageNet** (menggunakan KerasCV & TensorFlow). Project ini dideploy sebagai layanan REST API berbasis **FastAPI** untuk deteksi real-time.
 
-## Struktur Folder
+---
 
-```
+## 📂 Struktur Proyek
+
+```text
 model-nyawit/
-├── main.py                         # Entry point (stub)
-├── pyproject.toml                  # Project config & dependencies
-├── uv.lock                        # Lock file (uv)
-├── .python-version                 # Python 3.11
-├── .gitignore
+├── main.py                         # FastAPI ML Service (Inference)
+├── pyproject.toml                  # Konfigurasi dependensi Python
+├── uv.lock                         # Lockfile dependensi (uv manager)
+├── .python-version                 # Versi Python (3.11)
+├── .gitignore                      # Git Ignore
+├── .dvcignore                      # DVC Ignore
 ├── README.md                       # Dokumentasi ini
 │
-├── datasets/
-│   ├── annotations/
-│   │   ├── instances_train2017.json   # COCO annotations (train)
-│   │   └── instances_val2017.json     # COCO annotations (val)
-│   ├── train2017/                     # 1.803 gambar training (1024x1024)
-│   ├── val2017/                       # 500 gambar validasi (1024x1024)
+├── .dvc/                           # Konfigurasi Data Version Control (DVC)
+│   ├── config                      # Konfigurasi remote publik (Google Drive)
+│   ├── config.local                # [Gitignored] Kredensial privat Google Drive
+│   └── .gitignore                  # Mengabaikan folder cache & config.local
 │
-├── notebooks/                      # Jupyter notebooks (source of truth)
-│   └── model_deteksi_sawit_retina-net.ipynb   # RetinaNet pipeline (single-stage, faster)
+├── notebooks/                      # Jupyter notebook untuk training & riset
+│   └── model_deteksi_sawit_retina-net.ipynb   # Pipeline training & evaluasi RetinaNet
 │
-├── models/                         # Model artifacts (auto-generated)
-│   ├── retinanet_best.weights.h5     # Best weights
-│   └── retinanet_saved_model/       # Exported SavedModel
+├── working/                        # [Gitignored] Output training & Bobot Model (.h5)
+│   └── runs/
+│       └── palm_detection/
+│           └── retinanet_v2/
+│               └── best.weights.h5 # Bobot terbaik model RetinaNet
 │
-└── working/                        # Output & cache (tidak di-commit)
-    ├── dataset/
-    │   ├── records.json               # Cache parsed COCO records
-    │   └── preview/                   # Visualisasi sample dengan bbox
-    └── runs/
-        └── palm_detection_tf/
-            └── retinanet_fallback_exp1/  # Checkpoint & logs training
+└── working.dvc                     # Pointer DVC melacak direktori working/
 ```
 
-## Dataset
+---
 
-Dataset berisi citra udara (UAV/drone) perkebunan kelapa sawit dengan anotasi bounding box format **COCO JSON**.
-Source: [UAV Dataset](https://github.com/rs-dl/MOPAD)
+## 🛠️ Cara Instalasi
 
-### Sumber Data
-
-| Split | Jumlah Gambar | Jumlah Annotasi | Format |
-|-------|--------------|-----------------|--------|
-| Train | 1.803        | 262.811         | JPG (1024x1024) |
-| Val   | 500          | 32.846          | JPG (1024x1024) |
-
-### Kelas (5 kelas)
-
-| Index | Nama      | Deskripsi                    |
-|-------|-----------|------------------------------|
-| 0     | Dead      | Pohon mati                   |
-| 1     | Healthy   | Pohon sehat                  |
-| 2     | Grass     | Semak/rumput                 |
-| 3     | Small     | Pohon kecil (belum produktif)|
-| 4     | Yellow    | Pohon menguning (kurang sehat)|
-
-### Struktur Anotasi (COCO Format)
-
-```json
-{
-  "images": [{"id": 0, "file_name": "52000_20000_1529_3318.jpg", "height": 1024, "width": 1024}],
-  "annotations": [{"image_id": 0, "category_id": 1, "bbox": [x, y, w, h], "iscrowd": 0}],
-  "categories": [{"id": 1, "name": "Dead"}, {"id": 2, "name": "Healthy"}, ...]
-}
-```
-
-Format bbox: `[x, y, width, height]` dalam piksel (origin: kiri-atas).
-
-### Persiapan Dataset
-
-1. Unduh dataset UAV palm tree detection (format COCO).
-2. Letakkan folder dan file sesuai struktur:
-   ```
-   datasets/
-   ├── annotations/
-   │   ├── instances_train2017.json
-   │   └── instances_val2017.json
-   ├── train2017/    ← gambar training
-   └── val2017/      ← gambar validasi
-   ```
-3. Dataset **tidak di-commit** (terdaftar di `.gitignore`).
-
-## Tech Stack
-
-| Komponen        | Versi       | Fungsi                          |
-|-----------------|-------------|---------------------------------|
-| Python          | 3.11        | Runtime                         |
-| TensorFlow      | 2.15.0      | Training engine & tf.data       |
-| Keras           | 2.15.0      | High-level API                  |
-| KerasCV         | 0.8.2       | Object detection model & layers |
-| OpenCV          | latest      | Image I/O & visualization       |
-| NumPy           | <2          | Numerik                         |
-| scikit-learn    | latest      | Split & metrics                 |
-| Matplotlib      | latest      | Plotting                        |
-| Seaborn         | latest      | Confusion matrix heatmap        |
-
-## Setup
+Ikuti langkah-langkah di bawah ini untuk menyiapkan environment dan dependencies proyek.
 
 ### Prasyarat
+* **Python 3.11**
+* **Package Manager `uv`** (direkomendasikan karena instalasi sangat cepat) atau **`pip`**
 
-- **Python 3.11** (ditentukan di `.python-version`)
-- GPU dengan CUDA support (opsional, sangat direkomendasikan untuk training)
-- ~10 GB disk space untuk dataset
+### Opsi A: Menggunakan `uv` (Direkomendasikan)
+1. **Install uv** (jika belum terpasang):
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+2. **Clone Repositori**:
+   ```bash
+   git clone https://github.com/capstone-nyawit/model-nyawit.git
+   cd model-nyawit
+   ```
+3. **Instal Dependencies & Sinkronisasi Virtual Environment**:
+   ```bash
+   uv sync
+   ```
+4. **Aktifkan Virtual Environment**:
+   ```bash
+   source .venv/bin/activate
+   ```
 
-### Opsi 1: Menggunakan uv (Direkomendasikan)
+### Opsi B: Menggunakan `pip` standar
+1. **Clone Repositori**:
+   ```bash
+   git clone https://github.com/capstone-nyawit/model-nyawit.git
+   cd model-nyawit
+   ```
+2. **Buat & Aktifkan Virtual Environment**:
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+3. **Instal Dependencies**:
+   ```bash
+   pip install -e .
+   ```
 
-[uv](https://github.com/astral-sh/uv) adalah package manager Python yang sangat cepat.
+---
 
+## 🚀 Cara Menjalankan Sistem
+
+Setelah instalasi selesai, ikuti langkah berikut untuk mengunduh model dan menjalankan layanan API.
+
+### 1. Unduh Bobot Model (DVC Pull)
+Bobot model berukuran besar disimpan di remote Google Drive dan dikelola menggunakan DVC. Unduh bobot model ke direktori lokal dengan menjalankan:
 ```bash
-# Install uv (jika belum)
-curl -LsSf https://astral.sh/uv/install.sh | sh
+dvc pull
+```
+*Catatan: Pastikan Anda telah memiliki akses ke remote storage. Jika remote bersifat privat, masukkan kredensial lokal Anda ke `.dvc/config.local` terlebih dahulu.*
 
-# Clone repo
-git clone https://github.com/capstone-nyawit/model-nyawit.git
-cd model-nyawit
-
-# Sinkronisasi dependencies (otomatis baca pyproject.toml + uv.lock)
-uv sync
-
-# Aktifkan virtual environment
-source .venv/bin/activate
-
-# Jalankan
+### 2. Jalankan API Server (FastAPI)
+Jalankan server inferensi menggunakan Python:
+```bash
 python main.py
 ```
+Server secara default akan berjalan di **`http://localhost:8001`**.
 
-### Opsi 2: Menggunakan pip
+---
 
-```bash
-# Clone repo
-git clone https://github.com/capstone-nyawit/model-nyawit.git
-cd model-nyawit
+## ⚡ API Documentation
 
-# Buat virtual environment
-python3.11 -m venv .venv
-source .venv/bin/activate
+Layanan REST API ini digunakan untuk melakukan deteksi objek kelapa sawit secara real-time.
 
-# Install dependencies
-pip install -e .
+### 1. Health Check
+Memeriksa apakah server API berjalan dengan baik.
+* **URL**: `/`
+* **Method**: `GET`
+* **Response (JSON)**:
+  ```json
+  {
+    "status": "ok",
+    "message": "Palm Detection ML Service is running"
+  }
+  ```
 
-# Atau install langsung dari pyproject.toml
-pip install numpy<2 tensorflow==2.15.0 keras==2.15.0 keras-cv==0.8.2 \
-    opencv-python matplotlib pandas scikit-learn seaborn
+### 2. Deteksi Gambar (Inference)
+Mendeteksi letak pohon kelapa sawit dari URL gambar yang diberikan.
+* **URL**: `/predict`
+* **Method**: `POST`
+* **Headers**: `Content-Type: application/json`
+* **Request Body (JSON)**:
+  ```json
+  {
+    "image_url": "https://res.cloudinary.com/demo/image/upload/v12345678/uav_palm_plantation.jpg"
+  }
+  ```
+* **Response (JSON)**:
+  ```json
+  {
+    "predictions": [
+      {
+        "box": [0.1523, 0.4412, 0.0821, 0.0894],
+        "confidence": 0.8942,
+        "class_id": 1
+      },
+      {
+        "box": [0.3415, 0.1205, 0.0754, 0.0762],
+        "confidence": 0.9123,
+        "class_id": 1
+      }
+    ],
+    "original_shape": [1024, 1024]
+  }
+  ```
 
-# Jalankan
-python main.py
-```
+#### Penjelasan Response:
+* **`box`**: Koordinat bounding box dalam format `[x, y, w, h]` (koordinat x tengah, y tengah, lebar, tinggi) yang telah dinormalisasi terhadap dimensi gambar (skala 0.0 hingga 1.0).
+* **`confidence`**: Tingkat keyakinan model (skala 0.0 sampai 1.0).
+* **`class_id`**: Kategori kelapa sawit yang terdeteksi:
+  * `0`: **Dead** (Pohon mati)
+  * `1`: **Healthy** (Pohon sehat)
+  * `2`: **Grass** (Semak/rumput liar)
+  * `3`: **Small** (Pohon kecil/belum produktif)
+  * `4`: **Yellow** (Pohon menguning/sakit)
 
-### Verifikasi Instalasi
+---
 
-```bash
-python -c "import tensorflow as tf; import keras_cv; import cv2; print(f'TF={tf.__version__}'); print(f'KerasCV={keras_cv.__version__}'); print(f'OpenCV={cv2.__version__}'); print(f'GPU={tf.config.list_physical_devices(\"GPU\")}')"
-```
+## 📊 Detail Model & Dataset
 
-## Penggunaan
-
-### Training via Notebook
-
-Notebook `model_deteksi_sawit_retina-net.ipynb` terorganisir dalam 22+ cell terpisah untuk keterbacaan maksimal:
-
-| No | Cell | Fungsi |
-|----|------|--------|
-| 1 | Setup & Import | Import library, konstanta global |
-| 2 | Path & GPU | Setup path, GPU memory growth, mixed precision |
-| 3 | COCO Parser | `coco_to_records()` - parse COCO annotations |
-| 4 | Stratified Split | `dominant_class()`, `stratified_split()` - split data |
-| 5 | Load Dataset | `load_or_build_dataset()` - cache/load records |
-| 6 | Visualisasi | `draw_boxes_cv2()` - preview dataset |
-| 7-10 | Data Pipeline | Generator, decoder, augmenter, dataset builder |
-| 11 | Build Model | Bangun RetinaNet + NMS decoder |
-| 12-14 | Compile | LR schedule (WarmupCosine), optimizer, callbacks |
-| 15 | Training | Fit model, auto-resume dari checkpoint |
-| 16 | Loss Curve | Plot training/validation loss |
-| 17 | COCO mAP | Evaluasi dengan BoxCOCOMetrics |
-| 18 | Confusion Matrix | Box-matched CM via IoU > 0.5 |
-| 19 | Per-Class | Precision/Recall/F1 per kelas |
-| 20 | Inference | `detect_and_count()` - inference function |
-| 21 | Demo | Jalankan inference sample test |
-| 22 | Export | SavedModel, TFLite, salin ke /models/ |
-
-```bash
-jupyter notebook notebooks/model_deteksi_sawit_retina-net.ipynb
-```
-
-### Pipeline (per notebook)
-
-```
-Setup → Data Loading → Split (train/val/test) → tf.data Pipeline
-  → Build Model → Compile → Train → Evaluate (COCO mAP)
-  → Confusion Matrix → Inference → Export (SavedModel/TFLite/ONNX)
-```
-
-### Output Training
-
-Semua artefak tersimpan di `working/runs/`:
-
-```
-working/runs/palm_detection_tf/<experiment_name>/
-├── best.weights.h5          # Bobot terbaik
-├── training_log.csv         # Log training per epoch
-├── coco_metrics.json        # COCO mAP metrics
-├── loss_curve.png           # Plot loss
-├── confusion_matrix.png     # Confusion matrix
-├── logs/                    # TensorBoard logs
-└── exported/
-    ├── saved_model/         # SavedModel format
-    ├── best.tflite          # TFLite format
-    └── best.onnx            # ONNX format (opsional)
-```
-
-### Inference
-
-```python
-from pathlib import Path
-# Lihat contoh lengkap di notebook cell "Inference: detect_and_count"
-counts = detect_and_count("path/to/image.jpg", model, conf=0.5)
-# Output: {0: 5, 1: 12, 3: 2} → {Dead: 5, Healthy: 12, Small: 2}
-```
-
-## Catatan
-
-- Dataset (`datasets/`) dan output (`working/`) **tidak di-commit** via `.gitignore`.
-- `records.json` di `working/dataset/` adalah cache hasil parse COCO JSON. Hapus file ini untuk rebuild dari awal.
-- Training membutuhkan GPU dengan minimal ~8 GB VRAM. Mixed precision mengurangi penggunaan memori sebesar 50%.
-- Notebook terorganisir rapi dalam 22+ cell terpisah untuk keterbacaan maksimal.
-- Setiap fungsi memiliki docstring lengkap untuk dokumentasi inline (lihat docstring di masing-masing cell).
+* **Model Architecture**: KerasCV RetinaNet
+* **Backbone**: ResNet50 (Pretrained on ImageNet)
+* **Dataset Format**: COCO JSON (BBox format `[x_min, y_min, width, height]`)
+* **Image Input Size**: 800x800 piksel (auto-resized pada API)
