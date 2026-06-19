@@ -91,6 +91,12 @@ dvc pull
 ```
 *Catatan: Pastikan Anda telah memiliki akses ke remote storage. Jika remote bersifat privat, masukkan kredensial lokal Anda ke `.dvc/config.local` terlebih dahulu.*
 
+#### Alternatif
+Sebagai alternatif, Anda juga dapat mengunduh bobot model secara manual dari Google Drive melalui tautan berikut:
+👉 [Google Drive Model](https://drive.google.com/drive/folders/1Q_3WZiQjsfpfMN75jTysDQy5CdrDWDQu?usp=drive_link)
+
+Setelah diunduh, tempatkan folder `working/` tersebut beserta seluruh isinya di direktori root proyek ini.
+
 ### 2. Jalankan API Server (FastAPI)
 Jalankan server inferensi menggunakan Python:
 ```bash
