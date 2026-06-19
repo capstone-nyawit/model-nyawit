@@ -18,4 +18,7 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "python-multipart",
+    "gdown>=6.1.0",
+    "dvc>=3.67.1",
+    "dvc-gdrive>=3.0.1",
 ]
